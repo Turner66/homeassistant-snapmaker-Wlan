@@ -1,0 +1,6 @@
+{
+  "name": "Snapmaker J1",
+  "content_in_root": false,
+  "domain": "snapmaker_j1",
+  "iot_class": "local_polling"
+}

@@ -2,30 +2,31 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
-from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import DOMAIN
-from .api import SnapmakerJ1Api
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def validate_connection(
-    hass: HomeAssistant, host: str, port: int, timeout: int
-) -> bool:
-    """Validate that we can connect to the Snapmaker J1."""
-    session = async_get_clientsession(hass)
-    api = SnapmakerJ1Api(session=session, host=host, port=port, timeout=timeout)
-    status = await api.get_status()
-    return status is not None
+async def validate_connection(host: str, port: int, timeout: int) -> bool:
+    """Validate that the host is reachable on the given TCP port."""
+    try:
+        conn = asyncio.open_connection(host, port)
+        reader, writer = await asyncio.wait_for(conn, timeout=timeout)
+        writer.close()
+        await writer.wait_closed()
+        return True
+    except Exception as err:
+        _LOGGER.warning("TCP connection test failed for %s:%s: %s", host, port, err)
+        return False
 
 
 class SnapmakerJ1ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -43,17 +44,13 @@ class SnapmakerJ1ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(user_input[CONF_HOST])
             self._abort_if_unique_id_configured()
 
-            try:
-                valid = await validate_connection(
-                    self.hass,
-                    user_input[CONF_HOST],
-                    user_input.get(CONF_PORT, 8080),
-                    user_input.get(CONF_TIMEOUT, 5),
-                )
-                if not valid:
-                    errors["base"] = "cannot_connect"
-            except Exception as err:
-                _LOGGER.exception("Unexpected error during connection validation: %s", err)
+            valid = await validate_connection(
+                user_input[CONF_HOST],
+                user_input.get(CONF_PORT, 8080),
+                user_input.get(CONF_TIMEOUT, 5),
+            )
+
+            if not valid:
                 errors["base"] = "cannot_connect"
 
             if not errors:

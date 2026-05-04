@@ -1,7 +1,7 @@
 {
   "domain": "snapmaker_j1",
   "name": "Snapmaker J1",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "documentation": "https://github.com/Turner66/homeassistant-snapmaker-Wlan",
   "issue_tracker": "https://github.com/Turner66/homeassistant-snapmaker-Wlan/issues",
   "integration_type": "device",

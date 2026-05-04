@@ -11,9 +11,12 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.data_entry_flow import FlowResult
 
-from .const import DOMAIN, DEFAULT_TCP_PORT, DEFAULT_TIMEOUT
+DOMAIN = "snapmaker_j1"
 
 _LOGGER = logging.getLogger(__name__)
+
+DEFAULT_TCP_PORT = 8888
+DEFAULT_TIMEOUT = 5
 
 
 async def validate_connection(host: str, port: int, timeout: int) -> bool:

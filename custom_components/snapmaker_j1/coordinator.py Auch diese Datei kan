@@ -1,0 +1,41 @@
+"""Coordinator for Snapmaker J1."""
+
+from __future__ import annotations
+
+import logging
+from datetime import timedelta
+
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .const import DOMAIN
+from .sacp.client import SacpClient
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class SnapmakerJ1Coordinator(DataUpdateCoordinator):
+    """Coordinator for Snapmaker J1 SACP data."""
+
+    def __init__(self, hass, client: SacpClient) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=timedelta(seconds=5),
+        )
+        self.client = client
+
+    async def _async_update_data(self):
+        """Fetch data from Snapmaker J1.
+
+        TODO:
+        Once SacpClient methods are implemented, gather fresh state here.
+        """
+        try:
+            return {
+                "machine_info": self.client.machine_info,
+                "print_info": self.client.print_info,
+                "runtime_state": self.client.runtime_state,
+            }
+        except Exception as err:
+            raise UpdateFailed(f"Failed to update Snapmaker J1 data: {err}") from err

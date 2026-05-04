@@ -3,33 +3,32 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import DOMAIN
 from .api import SnapmakerJ1Api
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: dict[str, Any],
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: dict[str, Any] | None = None,
 ) -> None:
-    """Set up Snapmaker J1 sensors."""
-    # ⚠️ TEMPORARY: Hardcoded IP (will be replaced by config_flow)
-    api = SnapmakerJ1Api(host="192.168.1.100")
+    """Set up Snapmaker J1 sensors from config entry."""
+    api: SnapmakerJ1Api = hass.data[DOMAIN][entry.entry_id]
 
     async_add_entities(
         [
-            SnapmakerJ1StatusSensor(api),
-            SnapmakerJ1JobProgressSensor(api),
-            SnapmakerJ1JobNameSensor(api),
+            SnapmakerJ1StatusSensor(api, entry.entry_id),
+            SnapmakerJ1JobProgressSensor(api, entry.entry_id),
+            SnapmakerJ1JobNameSensor(api, entry.entry_id),
         ]
     )
 
@@ -39,26 +38,21 @@ class SnapmakerJ1StatusSensor(SensorEntity):
 
     _attr_name = "Snapmaker J1 Status"
     _attr_icon = "mdi:printer-3d"
-    _attr_unique_id = "snapmaker_j1_status"
 
-    def __init__(self, api: SnapmakerJ1Api) -> None:
-        """Initialize the status sensor."""
+    def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
         self._api = api
         self._attr_native_value = STATE_UNAVAILABLE
+        self._attr_unique_id = f"{entry_id}_status"
 
     async def async_update(self) -> None:
         """Fetch state from the printer."""
-        data = self._api.get_status()
+        data = await self._api.get_status()
 
         if not data:
-            _LOGGER.debug("No status data received from Snapmaker J1")
             self._attr_native_value = STATE_UNAVAILABLE
             return
 
-        # Extract normalized state
-        state = data.get("state", "unknown")
-        self._attr_native_value = state
-        _LOGGER.debug("Snapmaker J1 status updated: %s", state)
+        self._attr_native_value = data.get("state", "unknown")
 
 
 class SnapmakerJ1JobProgressSensor(SensorEntity):
@@ -67,37 +61,31 @@ class SnapmakerJ1JobProgressSensor(SensorEntity):
     _attr_name = "Snapmaker J1 Job Progress"
     _attr_icon = "mdi:progress-clock"
     _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_unique_id = "snapmaker_j1_job_progress"
 
-    def __init__(self, api: SnapmakerJ1Api) -> None:
-        """Initialize the progress sensor."""
+    def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
         self._api = api
         self._attr_native_value = None
+        self._attr_unique_id = f"{entry_id}_job_progress"
 
     async def async_update(self) -> None:
         """Fetch job progress from the printer."""
-        data = self._api.get_job_progress()
+        data = await self._api.get_job_progress()
 
         if not data:
-            _LOGGER.debug("No job progress data received from Snapmaker J1")
             self._attr_native_value = None
             return
 
-        # Extract progress percentage (assume 0-100 or need to calculate)
         progress = data.get("progress")
         if progress is not None:
             self._attr_native_value = int(progress)
-            _LOGGER.debug("Snapmaker J1 job progress: %d%%", progress)
+            return
+
+        current = data.get("current_line", 0)
+        total = data.get("total_lines", 0)
+        if total > 0:
+            self._attr_native_value = int((current / total) * 100)
         else:
-            # Try to calculate from current_line and total_lines
-            current = data.get("current_line", 0)
-            total = data.get("total_lines", 0)
-            if total > 0:
-                calculated = int((current / total) * 100)
-                self._attr_native_value = calculated
-                _LOGGER.debug(
-                    "Snapmaker J1 job progress (calculated): %d%%", calculated
-                )
+            self._attr_native_value = None
 
 
 class SnapmakerJ1JobNameSensor(SensorEntity):
@@ -105,23 +93,18 @@ class SnapmakerJ1JobNameSensor(SensorEntity):
 
     _attr_name = "Snapmaker J1 Job Name"
     _attr_icon = "mdi:file-document"
-    _attr_unique_id = "snapmaker_j1_job_name"
 
-    def __init__(self, api: SnapmakerJ1Api) -> None:
-        """Initialize the job name sensor."""
+    def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
         self._api = api
         self._attr_native_value = None
+        self._attr_unique_id = f"{entry_id}_job_name"
 
     async def async_update(self) -> None:
         """Fetch job name from the printer."""
-        data = self._api.get_job_progress()
+        data = await self._api.get_job_progress()
 
         if not data:
-            _LOGGER.debug("No job data received from Snapmaker J1")
             self._attr_native_value = None
             return
 
-        job_name = data.get("job_name")
-        if job_name:
-            self._attr_native_value = job_name
-            _LOGGER.debug("Snapmaker J1 job name: %s", job_name)
+        self._attr_native_value = data.get("job_name")

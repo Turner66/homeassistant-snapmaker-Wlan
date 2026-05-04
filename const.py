@@ -1,0 +1,33 @@
+"""Constants for Snapmaker J1 SACP integration."""
+
+DOMAIN = "snapmaker_j1"
+
+DEFAULT_TCP_PORT = 8888
+DEFAULT_DISCOVERY_PORT = 20054
+DEFAULT_TIMEOUT = 5
+DEFAULT_CLIENT_NAME = "Home Assistant"
+
+# Peer IDs (aus Luban/SACP abgeleitet)
+PEER_CONTROLLER = 0x01
+PEER_SCREEN = 0x03  # vorläufiger Platzhalter, erst final bestätigen wenn Header bekannt
+
+# SACP operation groups / commands (aus deinem Code)
+CMD_WIFI_CONNECTION = (0x01, 0x05)
+CMD_WIFI_CONNECTION_CLOSE = (0x01, 0x06)
+CMD_MACHINE_INFO = (0x01, 0x21)
+CMD_MODULE_INFO = (0x01, 0x20)
+
+CMD_HEARTBEAT_SUBSCRIBE = (0x01, 0xA0)
+CMD_COORDINATE_SUBSCRIBE = (0x01, 0xA2)
+
+CMD_NOZZLE_SUBSCRIBE = (0x10, 0xA0)
+CMD_HOTBED_SUBSCRIBE = (0x14, 0xA0)
+
+CMD_START_PRINT = (0xAC, 0x03)
+CMD_PAUSE_PRINT = (0xAC, 0x04)
+CMD_RESUME_PRINT = (0xAC, 0x05)
+CMD_STOP_PRINT = (0xAC, 0x06)
+
+CMD_PRINT_FILE_INFO = (0xAC, 0x1A)
+CMD_PRINT_LINE_SUBSCRIBE = (0xAC, 0xA0)
+CMD_PRINT_TIME_SUBSCRIBE = (0xAC, 0xA5)

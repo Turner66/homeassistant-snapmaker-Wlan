@@ -24,15 +24,17 @@ class SnapmakerJ1Coordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=5),
         )
         self.client = client
+        self._connected = False
 
     async def _async_update_data(self):
         """Fetch data from Snapmaker J1.
 
-        TODO:
-        Once SacpClient methods are implemented, gather fresh state here.
+        At this stage we only keep the integration loadable and structured.
+        The actual SACP packet protocol is still pending.
         """
         try:
             return {
+                "connected": self._connected,
                 "machine_info": self.client.machine_info,
                 "print_info": self.client.print_info,
                 "runtime_state": self.client.runtime_state,

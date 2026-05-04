@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -26,85 +27,124 @@ async def async_setup_entry(
 
     async_add_entities(
         [
-            SnapmakerJ1StatusSensor(api, entry.entry_id),
-            SnapmakerJ1JobProgressSensor(api, entry.entry_id),
-            SnapmakerJ1JobNameSensor(api, entry.entry_id),
-        ]
+            SnapmakerJ1WorkflowStateSensor(api, entry.entry_id),
+            SnapmakerJ1ProgressSensor(api, entry.entry_id),
+            SnapmakerJ1FileNameSensor(api, entry.entry_id),
+        ],
+        update_before_add=True,
     )
 
 
-class SnapmakerJ1StatusSensor(SensorEntity):
-    """Sensor showing the Snapmaker J1 printer status."""
+class SnapmakerJ1BaseSensor(SensorEntity):
+    """Base sensor for Snapmaker J1."""
+
+    _attr_should_poll = True
+
+    def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
+        self._api = api
+        self._entry_id = entry_id
+        self._status_cache: dict[str, Any] = {}
+
+    async def _refresh_status(self) -> dict[str, Any]:
+        """Refresh cached status from API."""
+        try:
+            self._status_cache = await self._api.get_status()
+        except Exception as err:
+            _LOGGER.error("Failed to refresh Snapmaker J1 status: %s", err)
+            self._status_cache = {}
+
+        return self._status_cache
+
+
+class SnapmakerJ1WorkflowStateSensor(SnapmakerJ1BaseSensor):
+    """Sensor showing the Snapmaker workflow state."""
 
     _attr_name = "Snapmaker J1 Status"
     _attr_icon = "mdi:printer-3d"
 
     def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
-        self._api = api
+        super().__init__(api, entry_id)
+        self._attr_unique_id = f"{entry_id}_workflow_state"
         self._attr_native_value = STATE_UNAVAILABLE
-        self._attr_unique_id = f"{entry_id}_status"
 
     async def async_update(self) -> None:
-        """Fetch state from the printer."""
-        data = await self._api.get_status()
+        """Update workflow state."""
+        status = await self._refresh_status()
 
-        if not data:
+        workflow_state = status.get("workflow_state")
+        if not workflow_state:
             self._attr_native_value = STATE_UNAVAILABLE
             return
 
-        self._attr_native_value = data.get("state", "unknown")
+        self._attr_native_value = workflow_state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        marlin_state = self._status_cache.get("marlin_state", {})
+        marlin_settings = self._status_cache.get("marlin_settings", {})
+
+        return {
+            "marlin_state": marlin_state,
+            "marlin_settings": marlin_settings,
+        }
 
 
-class SnapmakerJ1JobProgressSensor(SensorEntity):
-    """Sensor showing the job progress percentage."""
+class SnapmakerJ1ProgressSensor(SnapmakerJ1BaseSensor):
+    """Sensor showing print progress."""
 
-    _attr_name = "Snapmaker J1 Job Progress"
+    _attr_name = "Snapmaker J1 Print Progress"
     _attr_icon = "mdi:progress-clock"
     _attr_native_unit_of_measurement = PERCENTAGE
 
     def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
-        self._api = api
+        super().__init__(api, entry_id)
+        self._attr_unique_id = f"{entry_id}_print_progress"
         self._attr_native_value = None
-        self._attr_unique_id = f"{entry_id}_job_progress"
 
     async def async_update(self) -> None:
-        """Fetch job progress from the printer."""
-        data = await self._api.get_job_progress()
+        """Update progress value."""
+        status = await self._refresh_status()
+        marlin_state = status.get("marlin_state", {})
 
-        if not data:
+        # Luban-derived fields are not fully confirmed yet, so try multiple keys safely.
+        progress = (
+            marlin_state.get("progress")
+            or marlin_state.get("fileProgress")
+            or marlin_state.get("printProgress")
+        )
+
+        if progress is None:
             self._attr_native_value = None
             return
 
-        progress = data.get("progress")
-        if progress is not None:
+        try:
             self._attr_native_value = int(progress)
-            return
-
-        current = data.get("current_line", 0)
-        total = data.get("total_lines", 0)
-        if total > 0:
-            self._attr_native_value = int((current / total) * 100)
-        else:
+        except (TypeError, ValueError):
+            _LOGGER.debug("Could not parse Snapmaker J1 progress value: %s", progress)
             self._attr_native_value = None
 
 
-class SnapmakerJ1JobNameSensor(SensorEntity):
-    """Sensor showing the current job name."""
+class SnapmakerJ1FileNameSensor(SnapmakerJ1BaseSensor):
+    """Sensor showing current file name."""
 
-    _attr_name = "Snapmaker J1 Job Name"
+    _attr_name = "Snapmaker J1 Current File"
     _attr_icon = "mdi:file-document"
 
     def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
-        self._api = api
+        super().__init__(api, entry_id)
+        self._attr_unique_id = f"{entry_id}_current_file"
         self._attr_native_value = None
-        self._attr_unique_id = f"{entry_id}_job_name"
 
     async def async_update(self) -> None:
-        """Fetch job name from the printer."""
-        data = await self._api.get_job_progress()
+        """Update current file name."""
+        status = await self._refresh_status()
+        marlin_state = status.get("marlin_state", {})
 
-        if not data:
-            self._attr_native_value = None
-            return
+        file_name = (
+            marlin_state.get("fileName")
+            or marlin_state.get("filename")
+            or marlin_state.get("currentFile")
+        )
 
-        self._attr_native_value = data.get("job_name")
+        self._attr_native_value = file_name

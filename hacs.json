@@ -1,13 +1,6 @@
 {
-  "domain": "snapmaker_j1",
   "name": "Snapmaker J1",
-  "version": "0.2.0",
-  "documentation": "https://github.com/Turner66/homeassistant-snapmaker-Wlan",
-  "issue_tracker": "https://github.com/Turner66/homeassistant-snapmaker-Wlan/issues",
-  "integration_type": "device",
-  "iot_class": "local_polling",
-  "requirements": [],
-  "codeowners": ["@Turner66"],
-  "config_flow": true
+  "content_in_root": false,
+  "domain": "snapmaker_j1",
+  "iot_class": "local_polling"
 }
-``

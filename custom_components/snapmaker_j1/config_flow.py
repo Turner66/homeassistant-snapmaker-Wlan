@@ -10,18 +10,21 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from . import DOMAIN
 from .api import SnapmakerJ1Api
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "snapmaker_j1"
 
-
-async def validate_connection(hass: HomeAssistant, host: str, port: int, timeout: int) -> bool:
+async def validate_connection(
+    hass: HomeAssistant, host: str, port: int, timeout: int
+) -> bool:
     """Validate that we can connect to the Snapmaker J1."""
-    api = SnapmakerJ1Api(host=host, port=port, timeout=timeout)
-    status = api.get_status()
+    session = async_get_clientsession(hass)
+    api = SnapmakerJ1Api(session=session, host=host, port=port, timeout=timeout)
+    status = await api.get_status()
     return status is not None
 
 
@@ -37,11 +40,9 @@ class SnapmakerJ1ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Check for duplicate entries
             await self.async_set_unique_id(user_input[CONF_HOST])
             self._abort_if_unique_id_configured()
 
-            # Validate connection
             try:
                 valid = await validate_connection(
                     self.hass,
@@ -52,7 +53,7 @@ class SnapmakerJ1ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if not valid:
                     errors["base"] = "cannot_connect"
             except Exception as err:
-                _LOGGER.error("Unexpected error during connection validation: %s", err)
+                _LOGGER.exception("Unexpected error during connection validation: %s", err)
                 errors["base"] = "cannot_connect"
 
             if not errors:

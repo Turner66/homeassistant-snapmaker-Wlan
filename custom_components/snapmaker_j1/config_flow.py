@@ -11,7 +11,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.data_entry_flow import FlowResult
 
-from . import DOMAIN
+from .const import DOMAIN, DEFAULT_TCP_PORT, DEFAULT_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,8 +46,8 @@ class SnapmakerJ1ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             valid = await validate_connection(
                 user_input[CONF_HOST],
-                user_input.get(CONF_PORT, 8080),
-                user_input.get(CONF_TIMEOUT, 5),
+                user_input.get(CONF_PORT, DEFAULT_TCP_PORT),
+                user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
             )
 
             if not valid:
@@ -64,8 +64,8 @@ class SnapmakerJ1ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST): str,
-                    vol.Optional(CONF_PORT, default=8080): int,
-                    vol.Optional(CONF_TIMEOUT, default=5): int,
+                    vol.Optional(CONF_PORT, default=DEFAULT_TCP_PORT): int,
+                    vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): int,
                 }
             ),
             errors=errors,

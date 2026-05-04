@@ -32,52 +32,61 @@ async def async_setup_entry(
     )
 
 
-class SnapmakerJ1PauseButton(ButtonEntity):
-    """Button to pause the current print job."""
+class SnapmakerJ1BaseButton(ButtonEntity):
+    """Base button for Snapmaker J1."""
+
+    def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
+        self._api = api
+        self._entry_id = entry_id
+
+
+class SnapmakerJ1PauseButton(SnapmakerJ1BaseButton):
+    """Button to pause current print."""
 
     _attr_name = "Snapmaker J1 Pause"
     _attr_icon = "mdi:pause"
 
     def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
-        self._api = api
+        super().__init__(api, entry_id)
         self._attr_unique_id = f"{entry_id}_pause"
 
     async def async_press(self) -> None:
-        """Handle button press to pause print."""
-        success = await self._api.pause_print()
-        if not success:
-            _LOGGER.warning("Failed to pause print via button")
+        """Pause current print."""
+        ok = await self._api.pause_print()
+        if not ok:
+            _LOGGER.warning("Failed to pause Snapmaker J1 print")
 
 
-class SnapmakerJ1ResumeButton(ButtonEntity):
-    """Button to resume a paused print job."""
+class SnapmakerJ1ResumeButton(SnapmakerJ1BaseButton):
+    """Button to resume current print."""
 
     _attr_name = "Snapmaker J1 Resume"
     _attr_icon = "mdi:play"
 
     def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
-        self._api = api
+        super().__init__(api, entry_id)
         self._attr_unique_id = f"{entry_id}_resume"
 
     async def async_press(self) -> None:
-        """Handle button press to resume print."""
-        success = await self._api.resume_print()
-        if not success:
-            _LOGGER.warning("Failed to resume print via button")
+        """Resume current print."""
+        ok = await self._api.resume_print()
+        if not ok:
+            _LOGGER.warning("Failed to resume Snapmaker J1 print")
 
 
-class SnapmakerJ1StopButton(ButtonEntity):
-    """Button to stop the current print job."""
+class SnapmakerJ1StopButton(SnapmakerJ1BaseButton):
+    """Button to stop current print."""
 
     _attr_name = "Snapmaker J1 Stop"
     _attr_icon = "mdi:stop"
 
     def __init__(self, api: SnapmakerJ1Api, entry_id: str) -> None:
-        self._api = api
+        super().__init__(api, entry_id)
         self._attr_unique_id = f"{entry_id}_stop"
 
     async def async_press(self) -> None:
-        """Handle button press to stop print."""
-        success = await self._api.stop_print()
-        if not success:
-            _LOGGER.warning("Failed to stop print via button")
+        """Stop current print."""
+        ok = await self._api.stop_print()
+        if not ok:
+            _LOGGER.warning("Failed to stop Snapmaker J1 print")
+``
